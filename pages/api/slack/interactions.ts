@@ -33,6 +33,7 @@ export default async function handler(
         const dueDate = new Date(
           payload.view.state.values.when.when_input.selected_date.trim()
         );
+        console.log(JSON.stringify(dueDate));
       } else {
         console.error('selected_date not found or is undefined');
       }
