@@ -30,7 +30,7 @@ export default async function handler(
 
       const taskData = handleSubmission(view);
       // const userId = payload.user.id;
-      let channel_id = view.private_metadata.channelId;
+      const channel_id = view.private_metadata.channelId;
 
       console.log(`channel_id:${channel_id}`);
 
