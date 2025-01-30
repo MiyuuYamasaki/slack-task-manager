@@ -63,18 +63,35 @@ export default async function handler(
     return res.status(200).send('');
   } else {
     // 🟠 引数あり → 直接DB追加
-    const args = text.split(' ');
+    // const args = text.split(' ');
+
+    // テキストをカンマで分割
+    const args = text.split(',');
     if (args.length < 3) {
       return res.status(400).send('入力が不足しています。');
     }
 
-    const mention = args[0]; // @username
-    const title = args[1];
-    const dueDate = args[2];
-    const description = args.slice(3, args.length - 1).join(' ');
-    const reminderInterval = isNaN(Number(args[args.length - 1]))
-      ? null
-      : Number(args[args.length - 1]);
+    // 各変数に代入
+    const mention = args[0].split(' ').slice(1); // スラッシュの後のユーザー名部分
+    const title = args[1].trim(); // タイトル
+    const dueDate = new Date(args[2].trim()); // 期限（日付形式に変換）
+    const description = args[3].trim(); // 説明
+    const reminderInterval = isNaN(Number(args[4])) ? null : Number(args[4]); // リマインダー間隔
+
+    // const mention = args[0]; // @username
+    // const title = args[1];
+    // const dueDate = args[2];
+    // const description = args.slice(3, args.length - 1).join(' ');
+    // const reminderInterval = isNaN(Number(args[args.length - 1]))
+    //   ? null
+    //   : Number(args[args.length - 1]);
+
+    // 結果の確認
+    console.log(mention); // ["@山﨑 美優", "@親富祖 一"]
+    console.log(title); // "title"
+    console.log(dueDate); // "2025-01-31"（Dateオブジェクト）
+    console.log(description); // "description"
+    console.log(reminderInterval); // 3
 
     const userId = mention.replace(/[<@>]/g, ''); // @マークを除去
     console.log('text:' + text);
