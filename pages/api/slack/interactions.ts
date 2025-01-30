@@ -32,14 +32,7 @@ export default async function handler(
       // const userId = payload.user.id;
       let channel_id = view.private_metadata.channelId;
 
-      if (channel_id.startsWith('D')) {
-        // DMチャンネルの場合、再度DMチャンネルを開く
-        const response = await slackClient.conversations.open({
-          users: user_id, // 送信先のユーザーID
-        });
-
-        channel_id = response?.channel?.id; // 正しいDMチャンネルIDを取得
-      }
+      console.log(`channel_id:${channel_id}`);
 
       // 🔹 PrismaでDBにタスクを保存
       const task = await prisma.task.create({

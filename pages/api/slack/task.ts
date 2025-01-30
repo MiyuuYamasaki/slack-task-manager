@@ -10,7 +10,7 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  const { text, user_id, trigger_id } = req.body;
+  const { text, user_id, user_name, trigger_id } = req.body;
   let { channel_id } = req.body;
 
   if (channel_id.startsWith('D')) {
@@ -73,6 +73,8 @@ export default async function handler(
 
     return res.status(200).send('');
   } else {
+    const tasks = [];
+
     // 🟠 引数あり → 直接DB追加
     // テキストをカンマで分割
     const args = text.split(',');
@@ -82,26 +84,25 @@ export default async function handler(
 
     // 各変数に代入
     const mention = args[0].split(' ').slice(1); // スラッシュの後のユーザー名部分
+    const response = await slackClient.users.info({ user: mention });
+    const mention_user_name = response.user?.name;
+
     const title = args[1].trim(); // タイトル
     const dueDate = new Date(args[2].trim()); // 期限（日付形式に変換）
     const description = args[3].trim(); // 説明
     const reminderInterval = isNaN(Number(args[4])) ? null : Number(args[4]); // リマインダー間隔
 
     // 結果の確認
-    console.log(JSON.stringify(mention)); // ["@山﨑 美優", "@親富祖 一"]
-    console.log(title); // "title"
-    console.log(dueDate); // "2025-01-31"（Dateオブジェクト）
-    console.log(description); // "description"
-    console.log(reminderInterval); // 3
+    console.log(mention_user_name); // ["@山﨑 美優", "@親富祖 一"]
 
     // const userId = mention.replace(/[<@>]/g, ''); // @マークを除去
     console.log('text:' + text);
 
-    try {
+    tasks.push(async () => {
       const task = await prisma.task.create({
         data: {
           channelId: channel_id,
-          createdBy: user_id,
+          createdBy: user_name,
           title,
           description,
           dueDate: new Date(dueDate),
@@ -113,7 +114,9 @@ export default async function handler(
         },
       });
       console.log('tasks:' + JSON.stringify(task));
+    });
 
+    tasks.push(async () => {
       // 日本のタイムゾーンでフォーマット
       const formattedDate = dueDate.toLocaleDateString('ja-JP', {
         year: 'numeric',
@@ -124,8 +127,13 @@ export default async function handler(
 
       await slackClient.chat.postMessage({
         channel: channel_id,
-        text: `✅ タスクを作成しました: to @${mention} \n*${title}* (締切: ${formattedDate}) by @${user_id}`,
+        text: `✅ タスクを作成しました: to @${mention_user_name} \n*${title}* (締切: ${formattedDate}) by @${user_name}`,
       });
+    });
+
+    try {
+      await Promise.all(tasks.map((task) => task())); // 🔹 `task()` を呼び出して実行
+      console.log('✅ すべてのタスクが正常に完了しました');
     } catch (error) {
       console.error('Error creating task:', error);
       return res.status(500).send('タスクの作成に失敗しました。');
