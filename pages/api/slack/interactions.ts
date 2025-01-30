@@ -16,10 +16,10 @@ export default async function handler(
   }
 
   // const payload = JSON.parse(req.body.payload);
-  const { type, user, view } = req.body;
+  const { user, view } = req.body;
   const payload = JSON.parse(req.body.payload);
 
-  if (type.type === 'view_submission') {
+  if (payload.type === 'view_submission') {
     try {
       // const values = payload.view.state.values;
       // 🔹 handleSubmission でモーダルのデータを取得
