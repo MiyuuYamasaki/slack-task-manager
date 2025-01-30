@@ -78,7 +78,7 @@ export default async function handler(
     const reminderInterval = isNaN(Number(args[4])) ? null : Number(args[4]); // リマインダー間隔
 
     // 結果の確認
-    console.log(mention); // ["@山﨑 美優", "@親富祖 一"]
+    console.log(JSON.stringify(mention)); // ["@山﨑 美優", "@親富祖 一"]
     console.log(title); // "title"
     console.log(dueDate); // "2025-01-31"（Dateオブジェクト）
     console.log(description); // "description"
@@ -113,9 +113,17 @@ export default async function handler(
       });
       console.log('tasks:' + JSON.stringify(task));
 
+      // 日本のタイムゾーンでフォーマット
+      const formattedDate = dueDate.toLocaleDateString('ja-JP', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        weekday: 'short', // 「日」,「月」,「火」, ...
+      });
+
       await slackClient.chat.postMessage({
         channel: channel_id,
-        text: `✅ タスクを作成しました: *${title}* (締切: ${dueDate})`,
+        text: `✅ タスクを作成しました: *${title}* (締切: ${formattedDate})`,
       });
     } catch (error) {
       console.error('Error creating task:', error);

@@ -24,23 +24,19 @@ export default async function handler(
     try {
       // const values = payload.view.state.values;
       // 🔹 handleSubmission でモーダルのデータを取得
-      if (
-        payload.view.state.values &&
-        payload.view.state.values.when &&
-        payload.view.state.values.when.when_input &&
-        payload.view.state.values.when.when_input.selected_date
-      ) {
-        const dueDate = new Date(
-          payload.view.state.values.when.when_input.selected_date.trim()
-        );
-        console.log(JSON.stringify(dueDate));
-      } else {
-        console.error('selected_date not found or is undefined');
-      }
 
       const taskData = handleSubmission(payload.view);
       // const userId = payload.user.id;
-      const channelId = payload.channel.id;
+      let channel_id = payload.channel.id;
+
+      if (channel_id.startsWith('D')) {
+        // DMチャンネルの場合、再度DMチャンネルを開く
+        const response = await slackClient.conversations.open({
+          users: payload.view.id, // 送信先のユーザーID
+        });
+
+        channel_id = response?.channel?.id; // 正しいDMチャンネルIDを取得
+      }
       // const assignedUsers = values.who.who_select.selected_users;
       // const title = values.title.title_input.value;
       // const description = values.description.desc_input.value;
@@ -84,11 +80,17 @@ export default async function handler(
       });
       console.log(`tasks:${task}`);
 
+      // 日本のタイムゾーンでフォーマット
+      const formattedDate = taskData.dueDate.toLocaleDateString('ja-JP', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        weekday: 'short', // 「日」,「月」,「火」, ...
+      });
+
       await slackClient.chat.postMessage({
-        channel: channelId,
-        text: `✅ タスクが作成されました: *${taskData.title}* (締切: ${new Date(
-          taskData.dueDate
-        )})`,
+        channel: channel_id,
+        text: `✅ タスクが作成されました: *${taskData.title}* (締切: ${formattedDate})`,
       });
       return res.json({ response_action: 'clear' }); // モーダルを閉じる
       // return res.status(200).json({ response_action: 'clear' });
