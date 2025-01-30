@@ -18,64 +18,44 @@ export default async function handler(
   // const payload = JSON.parse(req.body.payload);
   // const { user, view } = req.body;
   const payload = JSON.parse(req.body.payload);
+
   console.log(payload);
 
   if (payload.type === 'view_submission') {
     try {
+      const view = payload.view;
+      const user_id = view.id;
       // const values = payload.view.state.values;
       // 🔹 handleSubmission でモーダルのデータを取得
 
-      const taskData = handleSubmission(payload.view);
+      const taskData = handleSubmission(view);
       // const userId = payload.user.id;
-      let channel_id = payload.channel.id;
+      let channel_id = view.private_metadata.channelId;
 
       if (channel_id.startsWith('D')) {
         // DMチャンネルの場合、再度DMチャンネルを開く
         const response = await slackClient.conversations.open({
-          users: payload.view.id, // 送信先のユーザーID
+          users: user_id, // 送信先のユーザーID
         });
 
         channel_id = response?.channel?.id; // 正しいDMチャンネルIDを取得
       }
-      // const assignedUsers = values.who.who_select.selected_users;
-      // const title = values.title.title_input.value;
-      // const description = values.description.desc_input.value;
-      // const dueDate = values.when.when_input.value;
-      // const reminderInterval = values.remind?.remind_input?.value
-      //   ? parseInt(values.remind.remind_input.value)
-      //   : null;
-
-      // // DBにタスクを追加
-      // const task = await prisma.task.create({
-      //   data: {
-      //     channelId,
-      //     createdBy: userId,
-      //     title,
-      //     description,
-      //     dueDate: new Date(dueDate),
-      //     reminderInterval,
-      //     status: 'open',
-      //     assignments: {
-      //       create: assignedUsers.map((id: string) => ({ userId: id })),
-      //     },
-      //   },
-      // });
 
       // 🔹 PrismaでDBにタスクを保存
       const task = await prisma.task.create({
         data: {
-          channelId: payload.view.private_metadata, // Slackモーダルの `private_metadata` にチャンネルIDを入れておくと取得可能
-          createdBy: payload.view.id,
+          channelId: channel_id, // Slackモーダルの `private_metadata` にチャンネルIDを入れておくと取得可能
+          createdBy: user_id,
           title: taskData.title,
           description: taskData.description,
           dueDate: new Date(taskData.dueDate),
           reminderInterval: taskData.reminderInterval,
           status: 'open',
-          assignments: {
-            create: taskData.assignedUsers.map((id: string) => ({
-              userId: id,
-            })),
-          },
+          // assignments: {
+          //   create: taskData.assignedUsers.map((id: string) => ({
+          //     userId: id,
+          //   })),
+          // },
         },
       });
       console.log(`tasks:${task}`);
@@ -90,7 +70,7 @@ export default async function handler(
 
       await slackClient.chat.postMessage({
         channel: channel_id,
-        text: `✅ タスクが作成されました: *${taskData.title}* (締切: ${formattedDate})`,
+        text: `✅ タスクを作成しました: to @${taskData.assignedUsers} \n*${taskData.title}* (締切: ${formattedDate}) by @${user_id}`,
       });
       return res.json({ response_action: 'clear' }); // モーダルを閉じる
       // return res.status(200).json({ response_action: 'clear' });

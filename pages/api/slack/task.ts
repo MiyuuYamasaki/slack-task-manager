@@ -13,6 +13,15 @@ export default async function handler(
   const { text, user_id, trigger_id } = req.body;
   let { channel_id } = req.body;
 
+  if (channel_id.startsWith('D')) {
+    // DMチャンネルの場合、再度DMチャンネルを開く
+    const response = await slackClient.conversations.open({
+      users: user_id, // 送信先のユーザーID
+    });
+
+    channel_id = response?.channel?.id; // 正しいDMチャンネルIDを取得
+  }
+
   if (!text) {
     // 🟢 引数なし → モーダル表示
     await slackClient.views.open({
@@ -20,6 +29,7 @@ export default async function handler(
       view: {
         type: 'modal',
         callback_id: 'task_modal',
+        private_metadata: JSON.stringify({ channelId: channel_id }), // ← ここに埋め込む
         title: { type: 'plain_text', text: '新しいタスク' },
         submit: { type: 'plain_text', text: '作成' },
         blocks: [
@@ -87,15 +97,6 @@ export default async function handler(
     // const userId = mention.replace(/[<@>]/g, ''); // @マークを除去
     console.log('text:' + text);
 
-    if (channel_id.startsWith('D')) {
-      // DMチャンネルの場合、再度DMチャンネルを開く
-      const response = await slackClient.conversations.open({
-        users: user_id, // 送信先のユーザーID
-      });
-
-      channel_id = response?.channel?.id; // 正しいDMチャンネルIDを取得
-    }
-
     try {
       const task = await prisma.task.create({
         data: {
@@ -123,7 +124,7 @@ export default async function handler(
 
       await slackClient.chat.postMessage({
         channel: channel_id,
-        text: `✅ タスクを作成しました: *${title}* (締切: ${formattedDate})`,
+        text: `✅ タスクを作成しました: to @${mention} \n*${title}* (締切: ${formattedDate}) by @${user_id}`,
       });
     } catch (error) {
       console.error('Error creating task:', error);
