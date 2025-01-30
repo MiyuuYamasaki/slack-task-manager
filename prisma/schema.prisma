@@ -1,0 +1,27 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Task {
+  id               Int      @id @default(autoincrement())
+  channelId        String
+  createdBy        Int      // ユーザーID（作成者）
+  title            String
+  description      String?
+  dueDate          DateTime
+  reminderInterval Int?
+  status           String   @default("open")
+  assignments      TaskAssignment[]
+}
+
+model TaskAssignment {
+  id      Int  @id @default(autoincrement())
+  task    Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskId  Int
+  userId  Int
+}
