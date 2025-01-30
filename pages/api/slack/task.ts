@@ -43,8 +43,8 @@ export default async function handler(
           {
             type: 'input',
             block_id: 'when',
-            label: { type: 'plain_text', text: '締切日 (YYYY-MM-DD)' },
-            element: { type: 'plain_text_input', action_id: 'when_input' },
+            label: { type: 'plain_text', text: '締切日を選択' },
+            element: { type: 'datepicker', action_id: 'when_picker' },
           },
           {
             type: 'input',
