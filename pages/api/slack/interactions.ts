@@ -24,8 +24,20 @@ export default async function handler(
     try {
       // const values = payload.view.state.values;
       // 🔹 handleSubmission でモーダルのデータを取得
-      const taskData = handleSubmission(payload.view);
+      if (
+        payload.view.state.values &&
+        payload.view.state.values.when &&
+        payload.view.state.values.when.when_input &&
+        payload.view.state.values.when.when_input.selected_date
+      ) {
+        const dueDate = new Date(
+          payload.view.state.values.when.when_input.selected_date.trim()
+        );
+      } else {
+        console.error('selected_date not found or is undefined');
+      }
 
+      const taskData = handleSubmission(payload.view);
       // const userId = payload.user.id;
       const channelId = payload.channel.id;
       // const assignedUsers = values.who.who_select.selected_users;

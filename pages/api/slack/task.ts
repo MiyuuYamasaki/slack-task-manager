@@ -10,7 +10,8 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  const { text, user_id, trigger_id, channel_id } = req.body;
+  const { text, user_id, trigger_id } = req.body;
+  let { channel_id } = req.body;
 
   if (!text) {
     // 🟢 引数なし → モーダル表示
@@ -63,8 +64,6 @@ export default async function handler(
     return res.status(200).send('');
   } else {
     // 🟠 引数あり → 直接DB追加
-    // const args = text.split(' ');
-
     // テキストをカンマで分割
     const args = text.split(',');
     if (args.length < 3) {
@@ -78,14 +77,6 @@ export default async function handler(
     const description = args[3].trim(); // 説明
     const reminderInterval = isNaN(Number(args[4])) ? null : Number(args[4]); // リマインダー間隔
 
-    // const mention = args[0]; // @username
-    // const title = args[1];
-    // const dueDate = args[2];
-    // const description = args.slice(3, args.length - 1).join(' ');
-    // const reminderInterval = isNaN(Number(args[args.length - 1]))
-    //   ? null
-    //   : Number(args[args.length - 1]);
-
     // 結果の確認
     console.log(mention); // ["@山﨑 美優", "@親富祖 一"]
     console.log(title); // "title"
@@ -95,6 +86,15 @@ export default async function handler(
 
     // const userId = mention.replace(/[<@>]/g, ''); // @マークを除去
     console.log('text:' + text);
+
+    if (channel_id.startsWith('D')) {
+      // DMチャンネルの場合、再度DMチャンネルを開く
+      const response = await slackClient.conversations.open({
+        users: user_id, // 送信先のユーザーID
+      });
+
+      channel_id = response?.channel?.id; // 正しいDMチャンネルIDを取得
+    }
 
     try {
       const task = await prisma.task.create({
@@ -111,7 +111,7 @@ export default async function handler(
           // },
         },
       });
-      console.log('tasks:' + task);
+      console.log('tasks:' + JSON.stringify(task));
 
       await slackClient.chat.postMessage({
         channel: channel_id,
