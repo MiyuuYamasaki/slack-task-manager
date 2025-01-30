@@ -77,6 +77,7 @@ export default async function handler(
       : Number(args[args.length - 1]);
 
     const userId = mention.replace(/[<@>]/g, ''); // @マークを除去
+    console.log('text:' + text);
 
     try {
       const task = await prisma.task.create({

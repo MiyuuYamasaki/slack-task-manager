@@ -16,14 +16,15 @@ export default async function handler(
   }
 
   // const payload = JSON.parse(req.body.payload);
-  const { user, view } = req.body;
+  // const { user, view } = req.body;
   const payload = JSON.parse(req.body.payload);
+  console.log(payload);
 
   if (payload.type === 'view_submission') {
     try {
       // const values = payload.view.state.values;
       // 🔹 handleSubmission でモーダルのデータを取得
-      const taskData = handleSubmission(view);
+      const taskData = handleSubmission(payload.view);
 
       // const userId = payload.user.id;
       const channelId = payload.channel.id;
@@ -54,8 +55,8 @@ export default async function handler(
       // 🔹 PrismaでDBにタスクを保存
       const task = await prisma.task.create({
         data: {
-          channelId: view.private_metadata, // Slackモーダルの `private_metadata` にチャンネルIDを入れておくと取得可能
-          createdBy: user.id,
+          channelId: payload.view.private_metadata, // Slackモーダルの `private_metadata` にチャンネルIDを入れておくと取得可能
+          createdBy: payload.view.id,
           title: taskData.title,
           description: taskData.description,
           dueDate: new Date(taskData.dueDate),
