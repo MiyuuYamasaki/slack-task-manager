@@ -93,7 +93,7 @@ export default async function handler(
     console.log(description); // "description"
     console.log(reminderInterval); // 3
 
-    const userId = mention.replace(/[<@>]/g, ''); // @マークを除去
+    // const userId = mention.replace(/[<@>]/g, ''); // @マークを除去
     console.log('text:' + text);
 
     try {
@@ -106,9 +106,9 @@ export default async function handler(
           dueDate: new Date(dueDate),
           reminderInterval,
           status: 'open',
-          assignments: {
-            create: [{ userId }],
-          },
+          // assignments: {
+          //   create: [{ userId }],
+          // },
         },
       });
       console.log('tasks:' + task);

@@ -1,5 +1,7 @@
 export const handleSubmission = (view: any) => {
   const values = view.state.values;
+  console.log(values);
+  console.log(JSON.stringify(values));
 
   return {
     assignedUsers: values.who.who_select.selected_users,
