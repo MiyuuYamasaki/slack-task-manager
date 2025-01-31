@@ -83,9 +83,19 @@ export default async function handler(
     }
 
     // 各変数に代入
-    const mention = args[0].split(' ').slice(1); // スラッシュの後のユーザー名部分
-    const response = await slackClient.users.info({ user: mention });
-    const mention_user_name = response.user?.name;
+    // const mention = args[0].split(' ').slice(1); // スラッシュの後のユーザー名部分
+
+    const mentions = args[0].match(/@(\w+)/g); // @に続くユーザー名を全て取得
+
+    if (mentions) {
+      const userNames = mentions.map((mention: []) => mention.slice(1)); // @を取り除いてユーザー名だけにする
+      console.log('userNames:' + userNames); // 複数のユーザー名が配列で表示されます
+    } else {
+      console.log('ユーザー名が見つかりません');
+    }
+
+    // const response = await slackClient.users.info({ user: mention });
+    // const mention_user_name = response.user?.name;
 
     const title = args[1].trim(); // タイトル
     const dueDate = new Date(args[2].trim()); // 期限（日付形式に変換）
@@ -93,7 +103,7 @@ export default async function handler(
     const reminderInterval = isNaN(Number(args[4])) ? null : Number(args[4]); // リマインダー間隔
 
     // 結果の確認
-    console.log(mention_user_name); // ["@山﨑 美優", "@親富祖 一"]
+    // console.log(mention_user_name); // ["@山﨑 美優", "@親富祖 一"]
 
     // const userId = mention.replace(/[<@>]/g, ''); // @マークを除去
     console.log('text:' + text);
@@ -127,7 +137,7 @@ export default async function handler(
 
       await slackClient.chat.postMessage({
         channel: channel_id,
-        text: `✅ タスクを作成しました: to @${mention_user_name} \n*${title}* (締切: ${formattedDate}) by @${user_name}`,
+        text: `✅ タスクを作成しました: to @test \n*${title}* (締切: ${formattedDate}) by @${user_name}`,
       });
     });
 
