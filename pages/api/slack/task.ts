@@ -1,6 +1,7 @@
 import { WebClient } from '@slack/web-api';
 import { PrismaClient } from '@prisma/client';
 import { NextApiRequest, NextApiResponse } from 'next';
+import { handleFormatDate } from '@/utils/handleFormattedDate';
 
 const token = process.env.SLACK_BOT_TOKEN as string;
 const slackClient = new WebClient(token);
@@ -84,6 +85,8 @@ export default async function handler(
 
     const mentionPart = args[0].match(/@(\w+)/g) || [];
 
+    console.log(`mentionPart: ${mentionPart}`);
+
     // ユーザーIDリストを取得
     const userIds = await Promise.all(
       mentionPart.map(async (mention: string) => {
@@ -91,28 +94,17 @@ export default async function handler(
       })
     );
 
-    // 無効なユーザーを除外し、<@user_id> 形式にする
-    const mentions = userIds
-      .filter((id): id is string => id !== null)
-      .map((id) => `<@${id}>`)
-      .join(' ');
+    console.log(`userIds: ${userIds}`);
 
     // userIds のうち、null でないものをフィルタリングして文字列に変換
     const users = userIds.filter((id): id is string => id !== null);
 
     console.log('カンマ区切りのユーザーリスト:', users); // 例: "U08AS8773NE,U07JFMB0URE"
 
-    console.log(`取得したメンション: ${mentions}`);
-
     const title = args[1].trim(); // タイトル
     const dueDate = new Date(args[2].trim()); // 期限（日付形式に変換）
     const description = args[3].trim(); // 説明
     const reminderInterval = isNaN(Number(args[4])) ? null : Number(args[4]); // リマインダー間隔
-
-    // 結果の確認
-    // console.log(mention_user_name); // ["@山﨑 美優", "@親富祖 一"]
-
-    // const userId = mention.replace(/[<@>]/g, ''); // @マークを除去
     console.log('text:' + text);
 
     tasks.push(async () => {
@@ -135,33 +127,35 @@ export default async function handler(
           assignments: true, // 作成した TaskAssignment を返すようにする
         },
       });
-      console.log('tasks:' + JSON.stringify(task));
+
+      if (!task) return res.status(500).send('タスクの作成に失敗しました。');
     });
 
     tasks.push(async () => {
+      // 無効なユーザーを除外し、<@user_id> 形式にする
+      const mentions = userIds
+        .filter((id): id is string => id !== null)
+        .map((id) => `<@${id}>`)
+        .join(' ');
+      console.log(`取得したメンション: ${mentions}`);
+
       // 日本のタイムゾーンでフォーマット
-      const formattedDate = dueDate.toLocaleDateString('ja-JP', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        weekday: 'short', // 「日」,「月」,「火」, ...
-      });
+      const formattedDate = await handleFormatDate(dueDate);
 
       await slackClient.chat.postMessage({
         channel: channel_id,
-        text: `✅ タスクを作成しました: to ${users} \n*${title}* (締切: ${formattedDate}) by <@${user_id}>`,
+        text: `✅ タスクを作成しました: to ${mentions} \n*${title}* (締切: ${formattedDate}) by <@${user_id}>`,
       });
     });
 
     try {
       await Promise.all(tasks.map((task) => task())); // 🔹 `task()` を呼び出して実行
       console.log('✅ すべてのタスクが正常に完了しました');
+      return res.status(200).send('');
     } catch (error) {
       console.error('Error creating task:', error);
       return res.status(500).send('タスクの作成に失敗しました。');
     }
-
-    return res.status(200).send('');
   }
 }
 
