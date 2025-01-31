@@ -35,10 +35,10 @@ export default async function handler(
 
       console.log(`channel_id:${channel_id}`);
 
-      const response = await slackClient.users.info({
-        user: taskData.assignedUsers,
-      });
-      const mention_user_name = response.user?.name;
+      // const response = await slackClient.users.info({
+      //   user: taskData.assignedUsers,
+      // });
+      // const mention_user_name = response.user?.name;
 
       // 🔹 PrismaでDBにタスクを保存
       const task = await prisma.task.create({
@@ -67,9 +67,15 @@ export default async function handler(
         weekday: 'short', // 「日」,「月」,「火」, ...
       });
 
+      // 文字列を配列に変換し、各ユーザーIDを `<@user_id>` 形式にする
+      const mentions = taskData.assignedUsers
+        .split(',')
+        .map((userId: string) => `<@${userId}>`)
+        .join(' ');
+
       await slackClient.chat.postMessage({
         channel: channel_id,
-        text: `✅ タスクを作成しました: to <@${mention_user_name}> \n*${taskData.title}* (締切: ${formattedDate}) by <@${user_id}>`,
+        text: `✅ タスクを作成しました: to ${mentions} \n*${taskData.title}* (締切: ${formattedDate}) by <@${user_id}>`,
       });
       return res.json({ response_action: 'clear' }); // モーダルを閉じる
       // return res.status(200).json({ response_action: 'clear' });

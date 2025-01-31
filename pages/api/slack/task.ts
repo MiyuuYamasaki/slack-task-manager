@@ -82,12 +82,12 @@ export default async function handler(
       return res.status(400).send('入力が不足しています。');
     }
 
-    const mentions = [...args[0].matchAll(/@(\w+)/g)]; // 全メンションを取得
+    // const mentions = [...args[0].matchAll(/@(\w+)/g)]; // 全メンションを取得
 
-    const userNames = mentions.map((mention) => mention.slice(1)); // @を取り除いてユーザー名だけにする
-    console.log('userNames:' + userNames); // 複数のユーザー名が配列で表示されます
+    // const userNames = mentions.map((mention) => mention.slice(1)); // @を取り除いてユーザー名だけにする
+    // console.log('userNames:' + userNames); // 複数のユーザー名が配列で表示されます
 
-    const users = await formatUserMentions(userNames, token);
+    const users = await processTaskCommand(args, token);
     // const response = await slackClient.users.info({ user: mention });
     // const mention_user_name = response.user?.name;
 
@@ -155,7 +155,34 @@ interface SlackUser {
   deleted?: boolean;
 }
 
-async function getUserIdByUserName(userName: string, token: string) {
+async function processTaskCommand(args: string[], token: string) {
+  // メンション部分を取得（最初の部分だけを取り出す）
+  const mentionPart = args[0].match(/@(\w+)/g) || [];
+
+  // ユーザーIDリストを取得
+  const userIds = await Promise.all(
+    mentionPart.map(async (mention) => {
+      return await getUserIdByMention(mention, token);
+    })
+  );
+
+  // 無効なユーザーを除外し、<@user_id> 形式にする
+  const mentions = userIds
+    .filter((id): id is string => id !== null)
+    .map((id) => `<@${id}>`)
+    .join(' ');
+
+  console.log(`取得したメンション: ${mentions}`);
+
+  return mentions;
+}
+
+async function getUserIdByMention(
+  mention: string,
+  token: string
+): Promise<string | null> {
+  const userName = mention.replace(/^@/, ''); // @を削除してユーザー名を取得
+
   const response = await fetch('https://slack.com/api/users.list', {
     method: 'GET',
     headers: {
@@ -171,20 +198,4 @@ async function getUserIdByUserName(userName: string, token: string) {
     (member: SlackUser) => member.name === userName
   );
   return user ? user.id : null;
-}
-
-async function formatUserMentions(
-  userNames: string[],
-  token: string
-): Promise<string> {
-  const userIds = await Promise.all(
-    userNames.map(async (userName) => {
-      return await getUserIdByUserName(userName, token);
-    })
-  );
-
-  return userIds
-    .filter((id): id is string => id !== null)
-    .map((id) => `<@${id}>`)
-    .join(' ');
 }
