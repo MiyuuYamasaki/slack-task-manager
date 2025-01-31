@@ -24,7 +24,7 @@ export default async function handler(
   if (payload.type === 'view_submission') {
     try {
       const view = payload.view;
-      const user_id = view.id;
+      const user_id = payload.user.id;
       // const values = payload.view.state.values;
       // 🔹 handleSubmission でモーダルのデータを取得
 
@@ -34,6 +34,11 @@ export default async function handler(
       const channel_id = privateMetadata.channelId;
 
       console.log(`channel_id:${channel_id}`);
+
+      const response = await slackClient.users.info({
+        user: taskData.assignedUsers,
+      });
+      const mention_user_name = response.user?.name;
 
       // 🔹 PrismaでDBにタスクを保存
       const task = await prisma.task.create({
@@ -64,7 +69,7 @@ export default async function handler(
 
       await slackClient.chat.postMessage({
         channel: channel_id,
-        text: `✅ タスクを作成しました: to @${taskData.assignedUsers} \n*${taskData.title}* (締切: ${formattedDate}) by @${user_id}`,
+        text: `✅ タスクを作成しました: to <@${mention_user_name}> \n*${taskData.title}* (締切: ${formattedDate}) by <@${user_id}>`,
       });
       return res.json({ response_action: 'clear' }); // モーダルを閉じる
       // return res.status(200).json({ response_action: 'clear' });
@@ -76,3 +81,16 @@ export default async function handler(
 
   res.status(400).json({ message: 'Bad Request' });
 }
+
+// async function formatUserMentions(userNames: string[], token: string) {
+//   const userIds = await Promise.all(
+//     userNames.map(async (userName) => {
+//       return await getUserIdByUserName(userName, token);
+//     })
+//   );
+
+//   return userIds
+//     .filter((id) => id !== null)
+//     .map((id) => `<@${id}>`)
+//     .join(' ');
+// }

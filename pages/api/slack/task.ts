@@ -10,7 +10,7 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  const { text, user_id, user_name, trigger_id } = req.body;
+  const { text, user_id, trigger_id } = req.body;
   let { channel_id } = req.body;
 
   if (channel_id.startsWith('D')) {
@@ -82,18 +82,12 @@ export default async function handler(
       return res.status(400).send('入力が不足しています。');
     }
 
-    // 各変数に代入
-    // const mention = args[0].split(' ').slice(1); // スラッシュの後のユーザー名部分
+    const mentions = [...args[0].matchAll(/@(\w+)/g)]; // 全メンションを取得
 
-    const mentions = args[0].match(/@(\w+)/g); // @に続くユーザー名を全て取得
+    const userNames = mentions.map((mention) => mention.slice(1)); // @を取り除いてユーザー名だけにする
+    console.log('userNames:' + userNames); // 複数のユーザー名が配列で表示されます
 
-    if (mentions) {
-      const userNames = mentions.map((mention: []) => mention.slice(1)); // @を取り除いてユーザー名だけにする
-      console.log('userNames:' + userNames); // 複数のユーザー名が配列で表示されます
-    } else {
-      console.log('ユーザー名が見つかりません');
-    }
-
+    const users = await formatUserMentions(userNames, token);
     // const response = await slackClient.users.info({ user: mention });
     // const mention_user_name = response.user?.name;
 
@@ -112,7 +106,7 @@ export default async function handler(
       const task = await prisma.task.create({
         data: {
           channelId: channel_id,
-          createdBy: user_name,
+          createdBy: user_id,
           title,
           description,
           dueDate: new Date(dueDate),
@@ -137,7 +131,7 @@ export default async function handler(
 
       await slackClient.chat.postMessage({
         channel: channel_id,
-        text: `✅ タスクを作成しました: to @test \n*${title}* (締切: ${formattedDate}) by @${user_name}`,
+        text: `✅ タスクを作成しました: to ${users} \n*${title}* (締切: ${formattedDate}) by <@${user_id}>`,
       });
     });
 
@@ -151,4 +145,46 @@ export default async function handler(
 
     return res.status(200).send('');
   }
+}
+
+interface SlackUser {
+  id: string;
+  name: string;
+  real_name?: string;
+  is_bot?: boolean;
+  deleted?: boolean;
+}
+
+async function getUserIdByUserName(userName: string, token: string) {
+  const response = await fetch('https://slack.com/api/users.list', {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  const data = await response.json();
+  if (!data.ok) return null;
+
+  const user = data.members.find(
+    (member: SlackUser) => member.name === userName
+  );
+  return user ? user.id : null;
+}
+
+async function formatUserMentions(
+  userNames: string[],
+  token: string
+): Promise<string> {
+  const userIds = await Promise.all(
+    userNames.map(async (userName) => {
+      return await getUserIdByUserName(userName, token);
+    })
+  );
+
+  return userIds
+    .filter((id): id is string => id !== null)
+    .map((id) => `<@${id}>`)
+    .join(' ');
 }
