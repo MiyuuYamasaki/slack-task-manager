@@ -82,14 +82,27 @@ export default async function handler(
       return res.status(400).send('入力が不足しています。');
     }
 
-    // const mentions = [...args[0].matchAll(/@(\w+)/g)]; // 全メンションを取得
+    const mentionPart = args[0].match(/@(\w+)/g) || [];
 
-    // const userNames = mentions.map((mention) => mention.slice(1)); // @を取り除いてユーザー名だけにする
-    // console.log('userNames:' + userNames); // 複数のユーザー名が配列で表示されます
+    // ユーザーIDリストを取得
+    const userIds = await Promise.all(
+      mentionPart.map(async (mention: string) => {
+        return await getUserIdByMention(mention, token);
+      })
+    );
 
-    const users = await processTaskCommand(args, token);
-    // const response = await slackClient.users.info({ user: mention });
-    // const mention_user_name = response.user?.name;
+    // 無効なユーザーを除外し、<@user_id> 形式にする
+    const mentions = userIds
+      .filter((id): id is string => id !== null)
+      .map((id) => `<@${id}>`)
+      .join(' ');
+
+    // userIds のうち、null でないものをフィルタリングして文字列に変換
+    const users = userIds.filter((id): id is string => id !== null);
+
+    console.log('カンマ区切りのユーザーリスト:', users); // 例: "U08AS8773NE,U07JFMB0URE"
+
+    console.log(`取得したメンション: ${mentions}`);
 
     const title = args[1].trim(); // タイトル
     const dueDate = new Date(args[2].trim()); // 期限（日付形式に変換）
@@ -112,9 +125,14 @@ export default async function handler(
           dueDate: new Date(dueDate),
           reminderInterval,
           status: 'open',
-          // assignments: {
-          //   create: [{ userId }],
-          // },
+          assignments: {
+            create: {
+              users: users, // 🔥 修正：文字列 → 配列で渡す
+            },
+          },
+        },
+        include: {
+          assignments: true, // 作成した TaskAssignment を返すようにする
         },
       });
       console.log('tasks:' + JSON.stringify(task));
@@ -153,28 +171,6 @@ interface SlackUser {
   real_name?: string;
   is_bot?: boolean;
   deleted?: boolean;
-}
-
-async function processTaskCommand(args: string[], token: string) {
-  // メンション部分を取得（最初の部分だけを取り出す）
-  const mentionPart = args[0].match(/@(\w+)/g) || [];
-
-  // ユーザーIDリストを取得
-  const userIds = await Promise.all(
-    mentionPart.map(async (mention) => {
-      return await getUserIdByMention(mention, token);
-    })
-  );
-
-  // 無効なユーザーを除外し、<@user_id> 形式にする
-  const mentions = userIds
-    .filter((id): id is string => id !== null)
-    .map((id) => `<@${id}>`)
-    .join(' ');
-
-  console.log(`取得したメンション: ${mentions}`);
-
-  return mentions;
 }
 
 async function getUserIdByMention(

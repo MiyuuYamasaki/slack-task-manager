@@ -57,7 +57,7 @@ export default async function handler(
           // },
         },
       });
-      console.log(`tasks:${task}`);
+      console.log(`tasks:${JSON.stringify(task)}`);
 
       // 日本のタイムゾーンでフォーマット
       const formattedDate = taskData.dueDate.toLocaleDateString('ja-JP', {
@@ -69,7 +69,6 @@ export default async function handler(
 
       // 文字列を配列に変換し、各ユーザーIDを `<@user_id>` 形式にする
       const mentions = taskData.assignedUsers
-        .split(',')
         .map((userId: string) => `<@${userId}>`)
         .join(' ');
 
